@@ -115,9 +115,7 @@ func (s *service) PublishCommand(w http.ResponseWriter, r *http.Request) {
 
 	wg := sync.WaitGroup{}
 	id := uuid.NewV4().String()
-	resCh := make(chan models.AgentDataRes)
 	req := internalRequest{
-		ResCh: resCh,
 		Req: models.AgentDataReq{
 			RequestId: id,
 			Def:       msg,
@@ -136,6 +134,8 @@ func (s *service) PublishCommand(w http.ResponseWriter, r *http.Request) {
 		go func() {
 			wg.Add(1)
 			defer wg.Done()
+			resCh := make(chan models.AgentDataRes)
+			req.ResCh = resCh
 			v <- req
 			resp, ok := <-req.ResCh
 			if !ok {
