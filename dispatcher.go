@@ -16,9 +16,18 @@ import (
 	"github.com/jessevdk/go-flags"
 	"github.com/rs/zerolog/log"
 
-	"github.com/danilkastar440/test_project/pkg/models"
-	"github.com/danilkastar440/test_project/pkg/pubsub"
+	"github.com/danilkastar440/TRRP_LAST/pkg/models"
+	"github.com/danilkastar440/TRRP_LAST/pkg/pubsub"
 )
+
+var (
+	connMu sync.Mutex
+)
+
+type internalRequest struct {
+	ResCh chan models.AgentDataRes
+	Req   models.AgentDataReq
+}
 
 type options struct {
 	ProjectID     string `long:"projectID" env:"PROJECT_ID" required:"true" default:"trrv-univer"`
@@ -28,19 +37,18 @@ type options struct {
 }
 
 type service struct {
-	dataClient   *pubsub.Client
-	commandsChan chan models.AgentDataRes
-	upgrader     websocket.Upgrader
-	connections  map[string]chan models.InternalRequest
-	results      map[string]chan models.AgentDataRes
+	dataClient  *pubsub.Client
+	resChan     chan models.AgentDataRes
+	upgrader    websocket.Upgrader
+	connections map[string]chan internalRequest
 }
 
 // handle results
 func (s *service) HandleResults() {
-	for res := range s.commandsChan {
-		res1 := res
-		s.results[res.RequestId] <- res1
-		data, err := json.Marshal(&res1)
+	for res := range s.resChan {
+		// Black magic
+		res := res
+		data, err := json.Marshal(&res)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to marshal result")
 			continue
@@ -65,13 +73,13 @@ func (s *service) Subscribe(w http.ResponseWriter, r *http.Request) {
 	defer c.Close()
 
 	cnt := 0
-	ch := make(chan models.InternalRequest)
-	//TODO: upgrade map
+	ch := make(chan internalRequest)
+	connMu.Lock()
 	s.connections[r.RemoteAddr] = ch
+	connMu.Unlock()
 	for req := range ch {
 		func() {
 			cnt++
-			defer req.Wg.Done()
 			log.Info().Msgf("Got %d msg for %v", cnt, r.RemoteAddr)
 
 			if err := c.WriteJSON(req.Req); err != nil {
@@ -84,9 +92,8 @@ func (s *service) Subscribe(w http.ResponseWriter, r *http.Request) {
 				log.Error().Err(err).Msg("Failed to read json")
 				return
 			}
-			s.commandsChan <- res
+			req.ResCh <- res
 		}()
-
 	}
 }
 
@@ -108,8 +115,9 @@ func (s *service) PublishCommand(w http.ResponseWriter, r *http.Request) {
 
 	wg := sync.WaitGroup{}
 	id := uuid.NewV4().String()
-	req := models.InternalRequest{
-		Wg: &wg,
+	resCh := make(chan models.AgentDataRes)
+	req := internalRequest{
+		ResCh: resCh,
 		Req: models.AgentDataReq{
 			RequestId: id,
 			Def:       msg,
@@ -118,31 +126,53 @@ func (s *service) PublishCommand(w http.ResponseWriter, r *http.Request) {
 
 	log.Info().Msgf("Publish command: %v", msg)
 
-	ch := make(chan models.AgentDataRes)
-	s.results[id] = ch
+	connMu.Lock()
+	var results []models.AgentDataRes
+	mu := sync.Mutex{}
 
-	//TODO: make it safe
-	for _, v := range s.connections {
-		wg.Add(1)
-		c := v
-		c <- req
+	for k, v := range s.connections {
+		v := v
+		k := k
+		go func() {
+			wg.Add(1)
+			defer wg.Done()
+			v <- req
+			resp, ok := <-req.ResCh
+			if !ok {
+				log.Error().Msgf("Failed to do req for: %v", k)
+				return
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			results = append(results, resp)
+		}()
 	}
+	connMu.Unlock()
 
 	wg.Wait()
-	var results []models.AgentDataRes
-	for result := range ch {
-		results = append(results, result)
-	}
-	data1, err := json.Marshal(&results)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to marshal results")
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
 
-	//TODO: FIX IT!!!!
-	w.WriteHeader(http.StatusOK)
-	w.Write(data1)
+	wg.Add(2)
+	go func() {
+		for _, v := range results {
+			s.resChan <- v
+		}
+		wg.Done()
+	}()
+
+	go func() {
+		defer wg.Done()
+		data1, err := json.Marshal(&results)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to marshal results")
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write(data1)
+	}()
+
+	wg.Wait()
 }
 
 // Check server handler
@@ -165,11 +195,10 @@ func main() {
 	}
 
 	s := service{
-		dataClient:   dataClient,
-		commandsChan: make(chan models.AgentDataRes),
-		upgrader:     websocket.Upgrader{},
-		connections:  make(map[string]chan models.InternalRequest),
-		results:      make(map[string]chan models.AgentDataRes),
+		dataClient:  dataClient,
+		resChan:     make(chan models.AgentDataRes),
+		upgrader:    websocket.Upgrader{},
+		connections: make(map[string]chan internalRequest),
 	}
 	go func() {
 		s.HandleResults()
