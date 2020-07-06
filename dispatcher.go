@@ -159,9 +159,9 @@ func (s *service) PublishCommand(w http.ResponseWriter, r *http.Request) {
 	wg.Add(2)
 	go func() {
 		defer log.Info().Msg("wg1 DONE")
-		for _, v := range results {
+		for k, v := range results {
 			s.resChan <- v
-			log.Info().Msgf("Sent to pubsub chanel: %#v", v)
+			log.Info().Msgf("Sent to pubsub chanel: %#v", k)
 		}
 		wg.Done()
 	}()
@@ -176,6 +176,7 @@ func (s *service) PublishCommand(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		log.Info().Msgf("Result len: %#v", len(data1))
 		w.WriteHeader(http.StatusOK)
 		w.Write(data1)
 	}()
