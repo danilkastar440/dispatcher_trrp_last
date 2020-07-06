@@ -139,7 +139,9 @@ func (s *service) PublishCommand(w http.ResponseWriter, r *http.Request) {
 			resCh := make(chan models.AgentDataRes)
 			req.ResCh = resCh
 			v <- req
+			log.Info().Msg("Sent")
 			resp, ok := <-req.ResCh
+			log.Info().Msgf("Get: %#v", resp)
 			if !ok {
 				log.Error().Msgf("Failed to do req for: %v", k)
 				return
@@ -155,13 +157,16 @@ func (s *service) PublishCommand(w http.ResponseWriter, r *http.Request) {
 
 	wg.Add(2)
 	go func() {
+		defer log.Info().Msg("wg1 DONE")
 		for _, v := range results {
 			s.resChan <- v
+			log.Info().Msgf("Sent to pubsub chanel: %#v", v)
 		}
 		wg.Done()
 	}()
 
 	go func() {
+		defer log.Info().Msg("wg2 DONE")
 		defer wg.Done()
 		data1, err := json.Marshal(&results)
 		if err != nil {
@@ -175,6 +180,7 @@ func (s *service) PublishCommand(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	wg.Wait()
+	log.Info().Msgf("results: %#v", results)
 }
 
 // Check server handler
