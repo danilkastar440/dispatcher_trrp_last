@@ -33,7 +33,7 @@ type options struct {
 	ProjectID     string `long:"projectID" env:"PROJECT_ID" required:"true" default:"trrv-univer"`
 	DataTopicName string `long:"dataTopicName" env:"DATA_TOPIC_NAME" required:"true" default:"results"`
 	DataSubName   string `long:"dataSubName" env:"DATA_SUB_NAME" required:"true" default:"results-sub"`
-	Port          string `long:"port" env:"PORT" required:"true" default:"9992"`
+	Port          string `long:"port" env:"PORT" required:"true" default:"8080"`
 }
 
 type service struct {
