@@ -128,14 +128,15 @@ func (s *service) PublishCommand(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msgf("Publish command: %v", msg)
 
 	connMu.Lock()
-	var results []models.AgentDataRes
+	results := make([]models.AgentDataRes, len(s.connections))
 	mu := sync.Mutex{}
-
+	mu1 := sync.Mutex{}
+	cnt := 0
 	for k, v := range s.connections {
 		v := v
 		k := k
+		wg.Add(1)
 		go func() {
-			wg.Add(1)
 			defer wg.Done()
 			resCh := make(chan models.AgentDataRes)
 			req.ResCh = resCh
@@ -149,7 +150,11 @@ func (s *service) PublishCommand(w http.ResponseWriter, r *http.Request) {
 			}
 			mu.Lock()
 			defer mu.Unlock()
-			results = append(results, resp)
+			mu1.Lock()
+			results[cnt] = resp
+			cnt++
+			log.Info().Msgf("cnt: %#v", cnt)
+			mu1.Unlock()
 		}()
 	}
 	connMu.Unlock()
