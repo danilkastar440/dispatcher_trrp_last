@@ -189,7 +189,7 @@ func main() {
 	}
 
 	// Initialize pub sub dataClient
-	dataClient, err := pubsub.NewClient(opts.ProjectID, opts.DataTopicName, opts.DataSubName, 5*time.Second)
+	dataClient, err := pubsub.NewClient(opts.ProjectID, opts.DataTopicName, opts.DataSubName, 60*time.Second)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to initialize pubsub dataClient")
 	}
