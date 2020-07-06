@@ -84,12 +84,14 @@ func (s *service) Subscribe(w http.ResponseWriter, r *http.Request) {
 
 			if err := c.WriteJSON(req.Req); err != nil {
 				log.Error().Err(err).Msg("Failed to write json")
+				close(req.ResCh)
 				return
 			}
 
 			var res models.AgentDataRes
 			if err := c.ReadJSON(&res); err != nil {
 				log.Error().Err(err).Msg("Failed to read json")
+				close(req.ResCh)
 				return
 			}
 			req.ResCh <- res
