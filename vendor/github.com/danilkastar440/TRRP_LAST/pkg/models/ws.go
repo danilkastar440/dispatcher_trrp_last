@@ -1,7 +1,5 @@
 package models
 
-import "sync"
-
 type AgentDataRes struct {
 	BotId        string           `json:"bot_id"`
 	Err          string           `json:"err,omitempty"`
@@ -26,7 +24,6 @@ type SourceDefinition struct {
 }
 
 type InternalRequest struct {
-	Wg    *sync.WaitGroup
 	ResCh chan AgentDataRes
 	Req   AgentDataReq
 }

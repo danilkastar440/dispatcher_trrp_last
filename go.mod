@@ -3,7 +3,7 @@ module github.com/danilkastar440/dispatcher_trrp_last
 go 1.14
 
 require (
-	github.com/danilkastar440/TRRP_LAST v0.0.0-20200705181448-d193464ab0ea
+	github.com/danilkastar440/TRRP_LAST v0.0.0-20200706040717-c03f2ec3c922
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/gorilla/websocket v1.4.2
 	github.com/jessevdk/go-flags v1.4.0

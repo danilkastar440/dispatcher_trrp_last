@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	publishTimeout = 5 * time.Second
+	publishTimeout = 30 * time.Second
 )
 
 type Client struct {

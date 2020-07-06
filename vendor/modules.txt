@@ -11,7 +11,7 @@ cloud.google.com/go/pubsub/internal/distribution
 cloud.google.com/go/pubsub/internal/scheduler
 # github.com/BurntSushi/toml v0.3.1
 github.com/BurntSushi/toml
-# github.com/danilkastar440/TRRP_LAST v0.0.0-20200705181448-d193464ab0ea
+# github.com/danilkastar440/TRRP_LAST v0.0.0-20200706040717-c03f2ec3c922
 ## explicit
 github.com/danilkastar440/TRRP_LAST/pkg/models
 github.com/danilkastar440/TRRP_LAST/pkg/pubsub
