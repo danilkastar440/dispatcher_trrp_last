@@ -166,10 +166,17 @@ func (s *service) PublishCommand(w http.ResponseWriter, r *http.Request) {
 
 	wg.Wait()
 
+	res1 := []models.AgentDataRes{}
+	for _, v := range results {
+		if v.StatusCode != 0 {
+			res1 = append(res1, v)
+		}
+	}
+
 	wg.Add(2)
 	go func() {
 		defer log.Info().Msg("wg1 DONE")
-		for k, v := range results {
+		for k, v := range res1 {
 			s.resChan <- v
 			log.Info().Msgf("Sent to pubsub chanel: %#v", k)
 		}
@@ -179,7 +186,7 @@ func (s *service) PublishCommand(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		defer log.Info().Msg("wg2 DONE")
 		defer wg.Done()
-		data1, err := json.Marshal(results)
+		data1, err := json.Marshal(res1)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to marshal results")
 			w.WriteHeader(http.StatusUnprocessableEntity)
@@ -192,7 +199,7 @@ func (s *service) PublishCommand(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	wg.Wait()
-	log.Info().Msgf("results: %#v", results)
+	log.Info().Msgf("results: %#v", len(res1))
 }
 
 // Check server handler
