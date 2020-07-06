@@ -78,6 +78,11 @@ func (s *service) Subscribe(w http.ResponseWriter, r *http.Request) {
 	connMu.Lock()
 	s.connections[r.RemoteAddr] = ch
 	connMu.Unlock()
+	defer func() {
+		connMu.Lock()
+		defer connMu.Unlock()
+		delete(s.connections, r.RemoteAddr)
+	}()
 	for req := range ch {
 		func() {
 			cnt++
