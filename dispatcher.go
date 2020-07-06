@@ -48,7 +48,8 @@ func (s *service) HandleResults() {
 	for res := range s.resChan {
 		// Black magic
 		res := res
-		data, err := json.Marshal(&res)
+		log.Info().Msgf("Sent to pubsub from HandleResults: %#v", res)
+		data, err := json.Marshal(res)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to marshal result")
 			continue
@@ -168,7 +169,7 @@ func (s *service) PublishCommand(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		defer log.Info().Msg("wg2 DONE")
 		defer wg.Done()
-		data1, err := json.Marshal(&results)
+		data1, err := json.Marshal(results)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to marshal results")
 			w.WriteHeader(http.StatusUnprocessableEntity)
